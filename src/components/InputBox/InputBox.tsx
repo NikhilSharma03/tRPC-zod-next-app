@@ -3,7 +3,9 @@ import React from "react";
 
 type Props = {
   value: string;
+  // eslint-disable-next-line no-unused-vars
   onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  // eslint-disable-next-line no-unused-vars
   onSendMsg: (e: React.FormEvent<HTMLFormElement>) => void;
   isSending: boolean;
 };
