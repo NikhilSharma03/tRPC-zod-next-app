@@ -1,36 +1,92 @@
-/**
- * This is a Next.js page.
- */
-import { trpc } from '../utils/trpc';
+import { NextPage } from "next";
+import { useEffect, useState } from "react";
+import Head from "next/head";
+import { v4 as uuidv4 } from "uuid";
+import { trpc } from "../utils/trpc";
+import Layout from "../components/Layout/Layout";
+import Chatbox from "../components/Chatbox/Chatbox";
+import InputBox from "../components/InputBox/InputBox";
+import ChatContainer from "../components/ChatContainer/ChatContainer";
+import Loading from "../components/Modal/Loading";
+import Alert from "../components/Modal/Alert";
+import { Message } from "../types/message";
 
-export default function IndexPage() {
-  // 💡 Tip: CMD+Click (or CTRL+Click) on `greeting` to go to the server definition
-  const result = trpc.greeting.useQuery({ name: 'client' });
+const HomePage: NextPage = () => {
+  const [userID, setUserID] = useState("");
+  const [textMsg, setTextMsg] = useState("");
+  const [alert, setAlert] = useState("");
 
-  if (!result.data) {
-    return (
-      <div style={styles}>
-        <h1>Loading...</h1>
-      </div>
-    );
-  }
+  const allMessages = trpc.msg.list.useQuery();
+
+  const utils = trpc.useContext();
+  const addMsgMutation = trpc.msg.add.useMutation({
+    async onSuccess({ text, _id, createdAt, creator }) {
+      setTextMsg("");
+      await utils.msg.list.cancel();
+      const messages = allMessages.data ?? [];
+      utils.msg.list.setData([
+        ...messages,
+        {
+          _id: _id,
+          text,
+          createdAt,
+          creator,
+        },
+      ]);
+    },
+  });
+
+  const onCreateChatHandler = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (textMsg.trim().length === 0) {
+      setAlert("Empty messages cannot be send.");
+      return;
+    }
+    addMsgMutation.mutate({
+      text: textMsg,
+      createdAt: new Date(),
+      creator: userID,
+    });
+  };
+
+  const onChangeInputMsgHandler = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setTextMsg(e.target.value);
+  };
+
+  useEffect(() => {
+    let uID: string = localStorage.getItem("user-id") ?? "";
+    if (!uID) {
+      uID = uuidv4();
+      localStorage.setItem("user-id", uID);
+    }
+    setUserID(uID);
+  }, []);
+
   return (
-    <div style={styles}>
-      {/**
-       * The type is defined and can be autocompleted
-       * 💡 Tip: Hover over `data` to see the result type
-       * 💡 Tip: CMD+Click (or CTRL+Click) on `text` to go to the server definition
-       * 💡 Tip: Secondary click on `text` and "Rename Symbol" to rename it both on the client & server
-       */}
-      <h1>{result.data.text}</h1>
+    <div className="overflow-hidden">
+      {allMessages.isLoading && <Loading />}
+      {alert && <Alert message={alert} closeAlert={() => setAlert("")} />}
+      <Head>
+        <title>Chat | Homepage</title>
+      </Head>
+      <div className="w-full h-screen relative overflow-hidden flex items-center z-10 justify-center">
+        <Layout />
+        <Chatbox>
+          <ChatContainer
+            msgs={
+              allMessages.data ? (allMessages.data as any as Message[]) : []
+            }
+          />
+          <InputBox
+            value={textMsg}
+            onChange={onChangeInputMsgHandler}
+            onSendMsg={onCreateChatHandler}
+            isSending={addMsgMutation.isLoading}
+          />
+        </Chatbox>
+      </div>
     </div>
   );
-}
-
-const styles = {
-  width: '100vw',
-  height: '100vh',
-  display: 'flex',
-  justifyContent: 'center',
-  alignItems: 'center',
 };
+
+export default HomePage;

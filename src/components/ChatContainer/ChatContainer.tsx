@@ -1,0 +1,36 @@
+import { NextPage } from "next";
+import MessageItem from "../MessageItem/MessageItem";
+import { Message } from "../../types/message";
+import { motion, AnimatePresence } from "framer-motion";
+
+type Props = {
+  msgs: Message[];
+};
+
+const ChatContainer: NextPage<Props> = ({ msgs }) => {
+  return (
+    <div className="overflow-y-auto overflow-x-hidden p-4 h-[63vh] chatbox-container flex flex-col">
+      <div className="ghost-element"></div>
+      <AnimatePresence initial={false}>
+        {msgs.map((msg) => (
+          <motion.div
+            key={msg._id}
+            className="mb-5 last:mb-0"
+            initial={{ opacity: 0, y: 100 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, transition: { duration: 0.15 } }}
+          >
+            <MessageItem
+              key={msg._id}
+              text={msg.text}
+              date={msg.createdAt.toString()}
+              creator={msg.creator}
+            />
+          </motion.div>
+        ))}
+      </AnimatePresence>
+    </div>
+  );
+};
+
+export default ChatContainer;
