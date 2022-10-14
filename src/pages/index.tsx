@@ -20,19 +20,21 @@ const HomePage: NextPage = () => {
 
   const utils = trpc.useContext();
   const addMsgMutation = trpc.msg.add.useMutation({
-    async onSuccess({ text, _id, createdAt, creator }) {
-      setTextMsg("");
+    onMutate: async () => {
       await utils.msg.list.cancel();
       const messages = allMessages.data ?? [];
-      utils.msg.list.setData([
-        ...messages,
-        {
-          _id: _id,
-          text,
-          createdAt,
-          creator,
-        },
-      ]);
+      return { previousMessages: messages };
+    },
+
+    onError: (error, _, context) => {
+      const previousMsgs = context?.previousMessages ?? [];
+      utils.msg.list.setData([...previousMsgs]);
+      setAlert(error.message);
+    },
+
+    onSettled: async () => {
+      await utils.msg.list.invalidate();
+      setTextMsg("");
     },
   });
 
